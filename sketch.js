@@ -52,7 +52,7 @@ const PHYSICS_BODY_HEIGHT = 4 * BIKE_SCALE;
 // pixel data is not ready yet.
 // -------------------------
 const FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER =
-	9 * BIKE_SCALE;
+    9 * BIKE_SCALE;
 
 
 // -------------------------
@@ -72,42 +72,42 @@ const WHEEL_PICK_RADIUS = 12 * BIKE_SCALE;
 // true = wheels in front of bike
 // -------------------------
 const BIKES = [
-	{
-		name: 'Sunset Racer',
-		bodyImg: 'images/bike1small(no wheel).png',
-		wheelImg: 'images/bike1wheel.png',
-		wheelsOnTop: false,
+    {
+        name: 'Sunset Racer',
+        bodyImg: 'images/bike1small(no wheel).png',
+        wheelImg: 'images/bike1wheel.png',
+        wheelsOnTop: false,
 
-		rearWheelOffsetX: -9.75 * BIKE_SCALE,
-		rearWheelOffsetY: 2.75 * BIKE_SCALE,
+        rearWheelOffsetX: -9.75 * BIKE_SCALE,
+        rearWheelOffsetY: 2.75 * BIKE_SCALE,
 
-		frontWheelOffsetX: 9.75 * BIKE_SCALE,
-		frontWheelOffsetY: 2.6666666667 * BIKE_SCALE
-	},
-	{
-		name: 'Blue Phantom',
-		bodyImg: 'images/bike2small(no wheel).png',
-		wheelImg: 'images/bike2wheel.png',
-		wheelsOnTop: true,
+        frontWheelOffsetX: 9.75 * BIKE_SCALE,
+        frontWheelOffsetY: 2.6666666667 * BIKE_SCALE
+    },
+    {
+        name: 'Blue Phantom',
+        bodyImg: 'images/bike2small(no wheel).png',
+        wheelImg: 'images/bike2wheel.png',
+        wheelsOnTop: true,
 
-		rearWheelOffsetX: -9.75 * BIKE_SCALE,
-		rearWheelOffsetY: 2.75 * BIKE_SCALE,
+        rearWheelOffsetX: -9.75 * BIKE_SCALE,
+        rearWheelOffsetY: 2.75 * BIKE_SCALE,
 
-		frontWheelOffsetX: 9.75 * BIKE_SCALE,
-		frontWheelOffsetY: 2.6666666667 * BIKE_SCALE
-	},
-	{
-		name: 'Parcel Pedal',
-		bodyImg: 'images/bike3small(no wheel).png',
-		wheelImg: 'images/bike3wheel.png',
-		wheelsOnTop: false,
+        frontWheelOffsetX: 9.75 * BIKE_SCALE,
+        frontWheelOffsetY: 2.6666666667 * BIKE_SCALE
+    },
+    {
+        name: 'Parcel Pedal',
+        bodyImg: 'images/bike3small(no wheel).png',
+        wheelImg: 'images/bike3wheel.png',
+        wheelsOnTop: false,
 
-		rearWheelOffsetX: -9.11 * BIKE_SCALE,
-		rearWheelOffsetY: 4.6 * BIKE_SCALE,
+        rearWheelOffsetX: -9.11 * BIKE_SCALE,
+        rearWheelOffsetY: 4.6 * BIKE_SCALE,
 
-		frontWheelOffsetX: 8.52 * BIKE_SCALE,
-		frontWheelOffsetY: 4.57 * BIKE_SCALE
-	}
+        frontWheelOffsetX: 8.52 * BIKE_SCALE,
+        frontWheelOffsetY: 4.57 * BIKE_SCALE
+    }
 ];
 
 let currentBikeIndex = 0;
@@ -187,54 +187,57 @@ bike1.passes(allSprites);
 // -------------------------
 // FIND THE LOWEST VISIBLE
 // PIXEL IN THE WHEEL IMAGE
-//
-// This ignores transparent padding
-// around the PNG.
+// (Debug Enhanced)
 // -------------------------
 function getVisibleWheelBottomFromCenter() {
-	const img = rearWheel.img;
+    const img = rearWheel.img;
 
-	if (
-		!img ||
-		!img.width ||
-		!img.height ||
-		img.width <= 0 ||
-		img.height <= 0
-	) {
-		return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
-	}
+    if (!img || !img.width || !img.height || img.width <= 0 || img.height <= 0) {
+        console.log("DEBUG: Image completely missing or dimensions are 0. Using fallback.");
+        return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
+    }
 
-	img.loadPixels();
+    img.loadPixels();
 
-	if (
-		!img.pixels ||
-		img.pixels.length < img.width * img.height * 4
-	) {
-		return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
-	}
+    if (!img.pixels || img.pixels.length < img.width * img.height * 4) {
+        console.log("DEBUG: img.pixels array is empty or too small. Using fallback.");
+        return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
+    }
 
-	let lowestVisibleY = -1;
+    const totalPhysicalPixels = img.pixels.length / 4;
+    const totalLogicalPixels = img.width * img.height;
+    const densitySq = totalPhysicalPixels / totalLogicalPixels;
+    const d = Math.round(Math.sqrt(densitySq));
 
-	for (let y = 0; y < img.height; y++) {
-		for (let x = 0; x < img.width; x++) {
-			const pixelIndex = 4 * (x + y * img.width);
-			const alpha = img.pixels[pixelIndex + 3];
+    let maxPixelIndexWithAlpha = -1;
+    let highestAlphaFound = 0;
 
-			if (alpha > 10) {
-				lowestVisibleY = y;
-			}
-		}
-	}
+    for (let i = 3; i < img.pixels.length; i += 4) {
+        if (img.pixels[i] > highestAlphaFound) {
+            highestAlphaFound = img.pixels[i];
+        }
+        // STRICTURE THRESHOLD: Ignore shadows and faint artifacts
+        if (img.pixels[i] > 240) {
+            maxPixelIndexWithAlpha = i;
+        }
+    }
 
-	if (lowestVisibleY === -1) {
-		return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
-	}
+    if (maxPixelIndexWithAlpha === -1) {
+        console.log(`DEBUG: Wheel is completely transparent! Max alpha found was: ${highestAlphaFound}. Using fallback.`);
+        return FALLBACK_VISIBLE_WHEEL_BOTTOM_FROM_CENTER;
+    }
 
-	// +1 treats the bottom of that pixel as the contact point
-	const bottomPixelPositionFromImageCenter =
-		lowestVisibleY + 1 - img.height / 2;
+    const pixelIndex = (maxPixelIndexWithAlpha - 3) / 4;
+    const physicalWidth = img.width * d;
+    const physicalY = Math.floor(pixelIndex / physicalWidth);
 
-	return bottomPixelPositionFromImageCenter * BIKE_SCALE;
+    const bottomEdgeFromTop = (physicalY + 1) / d;
+    const bottomPixelPositionFromImageCenter = bottomEdgeFromTop - img.height / 2;
+
+    console.log(`DEBUG: Wheel bottom found! Density: ${d}x, Img Height: ${img.height}, Lowest Y pixel: ${bottomEdgeFromTop}`);
+    console.log(`DEBUG: Returned Unscaled Center Offset: ${bottomPixelPositionFromImageCenter}`);
+
+    return bottomPixelPositionFromImageCenter * BIKE_SCALE;
 }
 
 
@@ -242,27 +245,19 @@ function getVisibleWheelBottomFromCenter() {
 // REFRESH COLLISION SO THE
 // HIDDEN BODY'S BOTTOM MATCHES
 // THE LOWEST VISIBLE WHEEL PIXEL
+// (Debug Enhanced)
 // -------------------------
 function refreshPhysicsOffsetFromVisibleWheelBottom() {
-	const visibleWheelBottomFromCenter =
-		getVisibleWheelBottomFromCenter();
+    const visibleWheelBottomFromCenter = getVisibleWheelBottomFromCenter();
 
-	const rearVisibleBottomOffset =
-		currentBike.rearWheelOffsetY +
-		visibleWheelBottomFromCenter;
+    const rearVisibleBottomOffset = currentBike.rearWheelOffsetY + visibleWheelBottomFromCenter;
+    const frontVisibleBottomOffset = currentBike.frontWheelOffsetY + visibleWheelBottomFromCenter;
 
-	const frontVisibleBottomOffset =
-		currentBike.frontWheelOffsetY +
-		visibleWheelBottomFromCenter;
+    const lowestVisibleWheelBottomOffset = Math.max(rearVisibleBottomOffset, frontVisibleBottomOffset);
 
-	const lowestVisibleWheelBottomOffset = Math.max(
-		rearVisibleBottomOffset,
-		frontVisibleBottomOffset
-	);
+    physicsBodyOffsetY = lowestVisibleWheelBottomOffset - PHYSICS_BODY_HEIGHT / 2;
 
-	physicsBodyOffsetY =
-		lowestVisibleWheelBottomOffset -
-		PHYSICS_BODY_HEIGHT / 2;
+    console.log(`DEBUG: physicsBodyOffsetY calculated as: ${physicsBodyOffsetY}`);
 }
 
 
@@ -272,14 +267,14 @@ function refreshPhysicsOffsetFromVisibleWheelBottom() {
 // Other bikes = wheels behind body
 // -------------------------
 function updateWheelLayers() {
-	if (currentBike.wheelsOnTop) {
-		rearWheel.layer = 3;
-		frontWheel.layer = 3;
-	}
-	else {
-		rearWheel.layer = 1;
-		frontWheel.layer = 1;
-	}
+    if (currentBike.wheelsOnTop) {
+        rearWheel.layer = 3;
+        frontWheel.layer = 3;
+    }
+    else {
+        rearWheel.layer = 1;
+        frontWheel.layer = 1;
+    }
 }
 
 updateWheelLayers();
@@ -290,8 +285,8 @@ updateWheelLayers();
 // Example: -9.75 * BIKE_SCALE
 // -------------------------
 function formatScaleValue(value) {
-	let scaledValue = value / BIKE_SCALE;
-	return Number(scaledValue.toFixed(4)).toString();
+    let scaledValue = value / BIKE_SCALE;
+    return Number(scaledValue.toFixed(4)).toString();
 }
 
 
@@ -319,7 +314,7 @@ document.body.appendChild(alignReadout);
 
 
 function updateAlignReadout() {
-	alignReadout.textContent =
+    alignReadout.textContent =
 `ALIGNING: ${currentBike.name}
 
 Drag the wheels with your mouse.
@@ -336,18 +331,18 @@ frontWheelOffsetY: ${formatScaleValue(currentBike.frontWheelOffsetY)} * BIKE_SCA
 // SWITCH BIKE FUNCTION
 // -------------------------
 function switchBike(newIndex) {
-	currentBikeIndex = newIndex;
-	currentBike = BIKES[currentBikeIndex];
+    currentBikeIndex = newIndex;
+    currentBike = BIKES[currentBikeIndex];
 
-	bike1.img = currentBike.bodyImg;
-	rearWheel.img = currentBike.wheelImg;
-	frontWheel.img = currentBike.wheelImg;
+    bike1.img = currentBike.bodyImg;
+    rearWheel.img = currentBike.wheelImg;
+    frontWheel.img = currentBike.wheelImg;
 
-	needsPhysicsOffsetRefresh = true;
+    needsPhysicsOffsetRefresh = true;
 
-	updateWheelLayers();
-	updateAlignReadout();
-	updateBikeButtonStyles();
+    updateWheelLayers();
+    updateAlignReadout();
+    updateBikeButtonStyles();
 }
 
 
@@ -375,31 +370,31 @@ document.body.appendChild(topUI);
 const bikeButtons = [];
 
 BIKES.forEach((bike, index) => {
-	let button = document.createElement('button');
+    let button = document.createElement('button');
 
-	button.textContent = bike.name;
-	button.style.padding = '10px 16px';
-	button.style.border = '2px solid black';
-	button.style.borderRadius = '8px';
-	button.style.fontSize = '16px';
-	button.style.fontWeight = 'bold';
-	button.style.cursor = 'pointer';
-	button.style.color = 'black';
+    button.textContent = bike.name;
+    button.style.padding = '10px 16px';
+    button.style.border = '2px solid black';
+    button.style.borderRadius = '8px';
+    button.style.fontSize = '16px';
+    button.style.fontWeight = 'bold';
+    button.style.cursor = 'pointer';
+    button.style.color = 'black';
 
-	button.onclick = function () {
-		switchBike(index);
-	};
+    button.onclick = function () {
+        switchBike(index);
+    };
 
-	bikeButtons.push(button);
-	topUI.appendChild(button);
+    bikeButtons.push(button);
+    topUI.appendChild(button);
 });
 
 
 function updateBikeButtonStyles() {
-	bikeButtons.forEach((button, index) => {
-		button.style.background =
-			index === currentBikeIndex ? 'gold' : 'white';
-	});
+    bikeButtons.forEach((button, index) => {
+        button.style.background =
+            index === currentBikeIndex ? 'gold' : 'white';
+    });
 }
 
 updateBikeButtonStyles();
@@ -421,29 +416,29 @@ alignButton.style.background = 'white';
 alignButton.style.color = 'black';
 
 alignButton.onclick = function () {
-	alignMode = !alignMode;
+    alignMode = !alignMode;
 
-	if (alignMode) {
-		alignButton.textContent = 'Align Mode: ON';
-		alignButton.style.background = '#7CFC00';
+    if (alignMode) {
+        alignButton.textContent = 'Align Mode: ON';
+        alignButton.style.background = '#7CFC00';
 
-		alignReadout.style.display = 'block';
-		updateAlignReadout();
+        alignReadout.style.display = 'block';
+        updateAlignReadout();
 
-		world.gravity.y = 0;
-		bikePhysicsBody.vel.x = 0;
-		bikePhysicsBody.vel.y = 0;
-	}
-	else {
-		alignButton.textContent = 'Align Mode: OFF';
-		alignButton.style.background = 'white';
+        world.gravity.y = 0;
+        bikePhysicsBody.vel.x = 0;
+        bikePhysicsBody.vel.y = 0;
+    }
+    else {
+        alignButton.textContent = 'Align Mode: OFF';
+        alignButton.style.background = 'white';
 
-		alignReadout.style.display = 'none';
-		draggedWheel = null;
+        alignReadout.style.display = 'none';
+        draggedWheel = null;
 
-		needsPhysicsOffsetRefresh = true;
-		world.gravity.y = GRAVITY_Y;
-	}
+        needsPhysicsOffsetRefresh = true;
+        world.gravity.y = GRAVITY_Y;
+    }
 };
 
 topUI.appendChild(alignButton);
@@ -453,7 +448,7 @@ topUI.appendChild(alignButton);
 // DISTANCE HELPER
 // -------------------------
 function getDistance(x1, y1, x2, y2) {
-	return Math.hypot(x2 - x1, y2 - y1);
+    return Math.hypot(x2 - x1, y2 - y1);
 }
 
 
@@ -461,33 +456,33 @@ function getDistance(x1, y1, x2, y2) {
 // START DRAGGING A WHEEL
 // -------------------------
 function tryStartWheelDrag() {
-	const rearDistance = getDistance(
-		mouse.x,
-		mouse.y,
-		rearWheel.x,
-		rearWheel.y
-	);
+    const rearDistance = getDistance(
+        mouse.x,
+        mouse.y,
+        rearWheel.x,
+        rearWheel.y
+    );
 
-	const frontDistance = getDistance(
-		mouse.x,
-		mouse.y,
-		frontWheel.x,
-		frontWheel.y
-	);
+    const frontDistance = getDistance(
+        mouse.x,
+        mouse.y,
+        frontWheel.x,
+        frontWheel.y
+    );
 
-	const rearIsClose = rearDistance <= WHEEL_PICK_RADIUS;
-	const frontIsClose = frontDistance <= WHEEL_PICK_RADIUS;
+    const rearIsClose = rearDistance <= WHEEL_PICK_RADIUS;
+    const frontIsClose = frontDistance <= WHEEL_PICK_RADIUS;
 
-	if (rearIsClose && frontIsClose) {
-		draggedWheel =
-			rearDistance < frontDistance ? 'rear' : 'front';
-	}
-	else if (rearIsClose) {
-		draggedWheel = 'rear';
-	}
-	else if (frontIsClose) {
-		draggedWheel = 'front';
-	}
+    if (rearIsClose && frontIsClose) {
+        draggedWheel =
+            rearDistance < frontDistance ? 'rear' : 'front';
+    }
+    else if (rearIsClose) {
+        draggedWheel = 'rear';
+    }
+    else if (frontIsClose) {
+        draggedWheel = 'front';
+    }
 }
 
 
@@ -495,37 +490,37 @@ function tryStartWheelDrag() {
 // UPDATE WHEEL DRAGGING
 // -------------------------
 function updateWheelDragging() {
-	const mouseIsPressed = mouse.pressing();
+    const mouseIsPressed = mouse.pressing();
 
-	if (alignMode && mouseIsPressed && !wasMousePressed) {
-		tryStartWheelDrag();
-	}
+    if (alignMode && mouseIsPressed && !wasMousePressed) {
+        tryStartWheelDrag();
+    }
 
-	if (alignMode && draggedWheel && mouseIsPressed) {
-		if (draggedWheel === 'rear') {
-			rearWheel.x = mouse.x;
-			rearWheel.y = mouse.y;
+    if (alignMode && draggedWheel && mouseIsPressed) {
+        if (draggedWheel === 'rear') {
+            rearWheel.x = mouse.x;
+            rearWheel.y = mouse.y;
 
-			currentBike.rearWheelOffsetX = rearWheel.x - bike1.x;
-			currentBike.rearWheelOffsetY = rearWheel.y - bike1.y;
-		}
+            currentBike.rearWheelOffsetX = rearWheel.x - bike1.x;
+            currentBike.rearWheelOffsetY = rearWheel.y - bike1.y;
+        }
 
-		if (draggedWheel === 'front') {
-			frontWheel.x = mouse.x;
-			frontWheel.y = mouse.y;
+        if (draggedWheel === 'front') {
+            frontWheel.x = mouse.x;
+            frontWheel.y = mouse.y;
 
-			currentBike.frontWheelOffsetX = frontWheel.x - bike1.x;
-			currentBike.frontWheelOffsetY = frontWheel.y - bike1.y;
-		}
+            currentBike.frontWheelOffsetX = frontWheel.x - bike1.x;
+            currentBike.frontWheelOffsetY = frontWheel.y - bike1.y;
+        }
 
-		updateAlignReadout();
-	}
+        updateAlignReadout();
+    }
 
-	if (!mouseIsPressed) {
-		draggedWheel = null;
-	}
+    if (!mouseIsPressed) {
+        draggedWheel = null;
+    }
 
-	wasMousePressed = mouseIsPressed;
+    wasMousePressed = mouseIsPressed;
 }
 
 
@@ -533,74 +528,91 @@ function updateWheelDragging() {
 // GAME LOOP
 // -------------------------
 q5.update = function () {
-	background('skyblue');
+    background('skyblue');
 
 
-	// -------------------------
-	// REFRESH COLLISION USING
-	// THE LOWEST VISIBLE WHEEL PIXEL
-	// -------------------------
-	if (needsPhysicsOffsetRefresh) {
-		refreshPhysicsOffsetFromVisibleWheelBottom();
-
-		if (
-			rearWheel.img &&
-			rearWheel.img.width > 0 &&
-			rearWheel.img.height > 0
-		) {
-			needsPhysicsOffsetRefresh = false;
-		}
-	}
-
-
-	// -------------------------
-	// NORMAL DRIVING CONTROLS
-	// Disabled in Align Mode
-	// -------------------------
-	if (!alignMode) {
-		if (kb.pressing('w')) {
-			bikePhysicsBody.vel.x = BIKE_MOVE_SPEED;
-
-			rearWheel.rotation += WHEEL_SPIN_SPEED;
-			frontWheel.rotation += WHEEL_SPIN_SPEED;
-		}
-		else if (kb.pressing('s')) {
-			bikePhysicsBody.vel.x = -BIKE_MOVE_SPEED;
-
-			rearWheel.rotation -= WHEEL_SPIN_SPEED;
-			frontWheel.rotation -= WHEEL_SPIN_SPEED;
-		}
-		else {
-			bikePhysicsBody.vel.x = 0;
-		}
-	}
-	else {
-		bikePhysicsBody.vel.x = 0;
-		bikePhysicsBody.vel.y = 0;
-	}
+    // -------------------------
+    // DEBUG STATE DUMP (Press P)
+    // -------------------------
+    if (kb.presses('p')) {
+        console.log(`\n--- PHYSICS STATE DUMP ---`);
+        console.log(`Floor Y: ${floor.y}, Height: ${floor.h}`);
+        console.log(`Floor Top Edge (Collision): ${floor.y - floor.h / 2}`);
+        console.log(`--`);
+        console.log(`Physics Body Y: ${bikePhysicsBody.y}, Height: ${bikePhysicsBody.h}`);
+        console.log(`Physics Body Bottom Edge (Collision): ${bikePhysicsBody.y + bikePhysicsBody.h / 2}`);
+        console.log(`--`);
+        console.log(`Visual Bike Y: ${bike1.y}`);
+        console.log(`Calculated Visual Offset: ${physicsBodyOffsetY}`);
+        console.log(`--------------------------\n`);
+    }
 
 
-	// -------------------------
-	// MAKE BIKE ART FOLLOW
-	// THE PHYSICS BODY
-	// -------------------------
-	bike1.x = bikePhysicsBody.x;
-	bike1.y = bikePhysicsBody.y - physicsBodyOffsetY;
+    // -------------------------
+    // REFRESH COLLISION USING
+    // THE LOWEST VISIBLE WHEEL PIXEL
+    // -------------------------
+    if (needsPhysicsOffsetRefresh) {
+        refreshPhysicsOffsetFromVisibleWheelBottom();
+
+        if (
+            rearWheel.img &&
+            rearWheel.img.width > 0 &&
+            rearWheel.img.height > 0
+        ) {
+            needsPhysicsOffsetRefresh = false;
+        }
+    }
 
 
-	// -------------------------
-	// KEEP WHEELS ATTACHED
-	// TO STORED OFFSETS
-	// -------------------------
-	rearWheel.x = bike1.x + currentBike.rearWheelOffsetX;
-	rearWheel.y = bike1.y + currentBike.rearWheelOffsetY;
+    // -------------------------
+    // NORMAL DRIVING CONTROLS
+    // Disabled in Align Mode
+    // -------------------------
+    if (!alignMode) {
+        if (kb.pressing('w')) {
+            bikePhysicsBody.vel.x = BIKE_MOVE_SPEED;
 
-	frontWheel.x = bike1.x + currentBike.frontWheelOffsetX;
-	frontWheel.y = bike1.y + currentBike.frontWheelOffsetY;
+            rearWheel.rotation += WHEEL_SPIN_SPEED;
+            frontWheel.rotation += WHEEL_SPIN_SPEED;
+        }
+        else if (kb.pressing('s')) {
+            bikePhysicsBody.vel.x = -BIKE_MOVE_SPEED;
+
+            rearWheel.rotation -= WHEEL_SPIN_SPEED;
+            frontWheel.rotation -= WHEEL_SPIN_SPEED;
+        }
+        else {
+            bikePhysicsBody.vel.x = 0;
+        }
+    }
+    else {
+        bikePhysicsBody.vel.x = 0;
+        bikePhysicsBody.vel.y = 0;
+    }
 
 
-	// -------------------------
-	// ALIGN MODE DRAGGING
-	// -------------------------
-	updateWheelDragging();
+    // -------------------------
+    // MAKE BIKE ART FOLLOW
+    // THE PHYSICS BODY
+    // -------------------------
+    bike1.x = bikePhysicsBody.x;
+    bike1.y = bikePhysicsBody.y - physicsBodyOffsetY;
+
+
+    // -------------------------
+    // KEEP WHEELS ATTACHED
+    // TO STORED OFFSETS
+    // -------------------------
+    rearWheel.x = bike1.x + currentBike.rearWheelOffsetX;
+    rearWheel.y = bike1.y + currentBike.rearWheelOffsetY;
+
+    frontWheel.x = bike1.x + currentBike.frontWheelOffsetX;
+    frontWheel.y = bike1.y + currentBike.frontWheelOffsetY;
+
+
+    // -------------------------
+    // ALIGN MODE DRAGGING
+    // -------------------------
+    updateWheelDragging();
 };
